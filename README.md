@@ -4,7 +4,7 @@ A thread safe logging system wit colours for servers. Thread safe for writing th
 ## Import
 Go get the package like this
 ```
-go get https://github.com/canopener/serverlog
+go get github.com/canopener/serverlog
 ```
 Import like this
 ```
@@ -12,7 +12,7 @@ import "github.com/canopener/serverlog"
 ```
 
 ## Usage
-The package needs to be initialised. Use the init function for this.
+The package needs to be initialized. Use the Init function for this.
 
 Set the first parameter to true to enable logging to the console.
 
@@ -38,6 +38,12 @@ serverlog.Fatal(conn.IP, "crashed the server! Kill all") // This will terminate 
 ![Console Demo](http://i.imgur.com/jYQHbMc.png)
 
 ![File Demo](http://i.imgur.com/SPWENaK.png?1)
+
+The log listener can be terminated with :
+```
+serverlog.Kill()
+```
+When this happens the serverlog package needs to be initialized before it can log again.
 
 ## License
 MIT License

@@ -15,7 +15,8 @@ var (
 	filePath    = "/home/mladen/Desktop/test.log"
 
 	//log queue
-	logChan = make(chan logItem, 1024)
+	logChan  = make(chan logItem, 100)
+	killChan = make(chan bool, 1)
 
 	//colour functions
 	startupColourFunc = ansi.ColorFunc("green+b:black")
@@ -39,7 +40,7 @@ func Init(consolLog, fileLog bool, pathToFile string) {
 	logToFile = fileLog
 	filePath = pathToFile
 
-	if logToConsol || logToFile {
+	if logToFile {
 		go listen()
 	}
 }
@@ -47,43 +48,70 @@ func Init(consolLog, fileLog bool, pathToFile string) {
 // Startup used to log the startup message
 // example "Startup("Server listening on port:", PORT)"
 func Startup(args ...interface{}) {
-	logChan <- logItem{
+	logItem := logItem{
 		longTime:         true,
 		preset:           "STARTUP:",
 		presetColourFunc: startupColour,
 		content:          stringFromArgs(args...),
+	}
+	if logToConsol && !logToFile {
+		writeToConsole(logItem)
+	} else {
+		logChan <- logItem
 	}
 }
 
 // Fatal is used to log something fatal
 // This will terminate the process with an exit code of 1
 func Fatal(args ...interface{}) {
-	logChan <- logItem{
+	logItem := logItem{
 		longTime:         false,
 		preset:           "FATAL:",
 		presetColourFunc: fatalColour,
 		content:          stringFromArgs(args...),
 	}
+	if logToConsol && !logToFile {
+		writeToConsole(logItem)
+	} else {
+		logChan <- logItem
+	}
 }
 
 // General is used to log general stuff
 func General(args ...interface{}) {
-	logChan <- logItem{
+	logItem := logItem{
 		longTime:         false,
 		preset:           "GENERAL:",
 		presetColourFunc: generalColour,
 		content:          stringFromArgs(args...),
 	}
+	if logToConsol && !logToFile {
+		writeToConsole(logItem)
+	} else {
+		logChan <- logItem
+	}
 }
 
 // Warning is used to log warnings
 func Warning(args ...interface{}) {
-	logChan <- logItem{
+	logItem := logItem{
 		longTime:         false,
 		preset:           "WARNING:",
 		presetColourFunc: warningColour,
 		content:          stringFromArgs(args...),
 	}
+	if logToConsol && !logToFile {
+		writeToConsole(logItem)
+	} else {
+		logChan <- logItem
+	}
+}
+
+// Kill will terminate the listener of the serverlog
+func Kill() {
+	killChan <- false
+	logToConsol = false
+	logToFile = false
 }
 
 // stringFromArgs returns a string of the combination of the arguments given
@@ -116,6 +144,8 @@ func listen() {
 			if item.presetColourFunc == fatalColour {
 				os.Exit(1)
 			}
+		case <-killChan:
+			return
 		}
 	}
 }
