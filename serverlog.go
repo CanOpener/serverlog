@@ -1,5 +1,11 @@
 package serverlog
 
+/*
+The MIT License (MIT)
+Copyright (c) 2015 Mladen Kajic
+See https://github.com/CanOpener/serverlog
+*/
+
 import (
 	"fmt"
 	"github.com/mgutz/ansi"
