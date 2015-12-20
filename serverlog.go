@@ -189,8 +189,17 @@ func logFileOverseer() {
 
 		select {
 		case <-newDay:
+			newLogFile := path.Join(logDir, tomorrow.Format("02-01-2006-{csrv}.log"))
+
+			// create new logfile
+			_, err := os.Create(newLogFile)
+			if err != nil {
+				Warning("Serverlog failed to create new logfile:", newLogFile, ":", err)
+				break
+			}
+
 			// tell listener new logfile name.
-			logNameChan <- path.Join(logDir, time.Now().Format("02-01-2006-{csrv}.log"))
+			logNameChan <- newLogFile
 
 			if maxDays > 0 {
 				files, err := ioutil.ReadDir(logDir)
