@@ -3,20 +3,27 @@ package serverlog
 import (
 	"fmt"
 	"github.com/mgutz/ansi"
+	"io/ioutil"
 	"log"
 	"os"
-	"strconv"
+	"path"
+	"sort"
+	"strings"
+	"syscall"
 	"time"
 )
 
 var (
-	logToConsol = false
-	logToFile   = false
-	filePath    = "/home/mladen/Desktop/test.log"
+	logToConsol = false // should log to consol
+	logToFile   = false // should log to file
+	logDir      = ""    // directory in which to store logfiles
+	maxDays     = -1    // total number of logfiles at any time
+	// if exeeded will delete oldest
 
 	//log queue
-	logChan  = make(chan logItem, 100)
-	killChan = make(chan bool, 1)
+	logChan     = make(chan logItem, 100)
+	logNameChan = make(chan string, 2)
+	killChan    = make(chan bool, 1)
 
 	//colour functions
 	startupColourFunc = ansi.ColorFunc("green+b:black")
@@ -35,115 +42,110 @@ const (
 
 // Init initialises the srvlog package. if either consoleLog or fileLog
 // is true it will start the logger in another gorutine ready to log
-func Init(consolLog, fileLog bool, pathToFile string) {
+func Init(consolLog, fileLog bool, maxLogDays int, pathToLogDir string) {
 	logToConsol = consolLog
 	logToFile = fileLog
-	filePath = pathToFile
+	logDir = pathToLogDir
+	maxDays = maxLogDays
 
 	if logToFile {
-		go listen()
+		// make sure log directory exists
+		info, err := os.Stat(logDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				log.Fatalln("The directory specified to serverlog does not exist.")
+			}
+			log.Fatalln(err)
+		}
+		if !info.IsDir() {
+			log.Fatalln("The path specified to serverlog is not a directory.")
+		}
+
+		// make sure have premissions to log directory
+		err = syscall.Access(logDir, syscall.O_RDWR)
+		if err != nil {
+			log.Fatalln("Serverlog needs read and write premissions to the specified directory.")
+		}
+
+		// manage logfile names and number of logfiles at any one time
+		// only needed if logging to files
+		go logFileOverseer()
 	}
+
+	go listen()
 }
 
 // Startup used to log the startup message
 // example "Startup("Server listening on port:", PORT)"
 func Startup(args ...interface{}) {
 	logItem := logItem{
-		longTime:         true,
-		preset:           "STARTUP:",
-		presetColourFunc: startupColour,
-		content:          stringFromArgs(args...),
+		prefix:           "STARTUP:",
+		prefixColourFunc: startupColour,
+		content:          args,
 	}
-	if logToConsol && !logToFile {
-		writeToConsole(logItem)
-	} else {
-		logChan <- logItem
-	}
+	logChan <- logItem
 }
 
-// Fatal is used to log something fatal
+// Fatal is used to log something a server killing circumstance
+// same as log.Fatalln()
 // This will terminate the process with an exit code of 1
 func Fatal(args ...interface{}) {
 	logItem := logItem{
-		longTime:         false,
-		preset:           "FATAL:",
-		presetColourFunc: fatalColour,
-		content:          stringFromArgs(args...),
+		prefix:           "FATAL:  ",
+		prefixColourFunc: fatalColour,
+		content:          args,
 	}
-	if logToConsol && !logToFile {
-		writeToConsole(logItem)
-	} else {
-		logChan <- logItem
-	}
+	logChan <- logItem
 }
 
 // General is used to log general stuff
 func General(args ...interface{}) {
 	logItem := logItem{
-		longTime:         false,
-		preset:           "GENERAL:",
-		presetColourFunc: generalColour,
-		content:          stringFromArgs(args...),
+		prefix:           "GENERAL:",
+		prefixColourFunc: generalColour,
+		content:          args,
 	}
-	if logToConsol && !logToFile {
-		writeToConsole(logItem)
-	} else {
-		logChan <- logItem
-	}
+	logChan <- logItem
 }
 
 // Warning is used to log warnings
 func Warning(args ...interface{}) {
 	logItem := logItem{
-		longTime:         false,
-		preset:           "WARNING:",
-		presetColourFunc: warningColour,
-		content:          stringFromArgs(args...),
+		prefix:           "WARNING:",
+		prefixColourFunc: warningColour,
+		content:          args,
 	}
-	if logToConsol && !logToFile {
-		writeToConsole(logItem)
-	} else {
-		logChan <- logItem
-	}
+	logChan <- logItem
 }
 
-// Kill will terminate the listener of the serverlog
+// Kill will terminate the listener and logFileOverseer
 func Kill() {
 	killChan <- false
 	logToConsol = false
 	logToFile = false
 }
 
-// stringFromArgs returns a string of the combination of the arguments given
-func stringFromArgs(args ...interface{}) string {
-	var formatStr string
-	for i := range args {
-		if i != 0 {
-			formatStr += " "
-		}
-		formatStr += "%v"
-	}
-	return fmt.Sprintf(formatStr, args...)
-}
-
 // logitem is the struct passed to the logger function
 type logItem struct {
-	longTime         bool
-	preset           string
-	presetColourFunc int
-	content          string
+	prefix           string
+	prefixColourFunc int
+	content          []interface{}
 }
 
 // listen is the listener which runs in its own gorutine and logs messages
 func listen() {
+	currentLogPath := path.Join(logDir, time.Now().Format("02-01-2006-{csrv}.log"))
+
 	for {
 		select {
 		case item := <-logChan:
 			writeToConsole(item)
-			writeToFile(item)
-			if item.presetColourFunc == fatalColour {
+			writeToFile(item, currentLogPath)
+			if item.prefixColourFunc == fatalColour {
 				os.Exit(1)
 			}
+		case newLogPath := <-logNameChan:
+			currentLogPath = newLogPath
 		case <-killChan:
 			return
 		}
@@ -151,14 +153,15 @@ func listen() {
 }
 
 // writeToFile logs a message to the logfile
-func writeToFile(item logItem) {
+func writeToFile(item logItem, logPath string) {
 	if logToFile {
-		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
+		file, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
+		defer file.Close()
 		if err != nil {
 			log.Fatalln(err)
 		}
 
-		line := getTimestamp(item.longTime) + " " + item.preset + " " + item.content + "\n"
+		line := time.Now().Format("15:04:05") + " " + item.prefix + " " + fmt.Sprintln(item.content)
 		_, err = file.WriteString(line)
 		if err != nil {
 			log.Fatalln(err)
@@ -169,7 +172,57 @@ func writeToFile(item logItem) {
 // writeToConsole logs a message to the console
 func writeToConsole(item logItem) {
 	if logToConsol {
-		fmt.Println(getTimestamp(item.longTime), colourInText(item.preset, item.presetColourFunc), item.content)
+		fmt.Print(time.Now().Format("15:04:05"), colourInText(item.prefix, item.prefixColourFunc), " ")
+		fmt.Println(item.content...)
+	}
+}
+
+// logFileOverseer makes sure that there are never more logfiles for each day than
+// maxLogDays. also makes sure to update the listener as to new logfile names
+// for each day.
+func logFileOverseer() {
+	for {
+		in24Hr := time.Now().AddDate(0, 0, 1) // AddDate is used in case the next day is next month or year
+		tomorrow := time.Date(in24Hr.Year(), in24Hr.Month(), in24Hr.Day(), 0, 0, 0, 0, in24Hr.Location())
+		timeToWait := tomorrow.Sub(time.Now())
+		newDay := time.After(timeToWait)
+
+		select {
+		case <-newDay:
+			// tell listener new logfile name.
+			logNameChan <- path.Join(logDir, time.Now().Format("02-01-2006-{csrv}.log"))
+
+			if maxDays > 0 {
+				files, err := ioutil.ReadDir(logDir)
+				if err != nil {
+					Warning("Server log failed to read from log directory :", err)
+					break
+				}
+
+				logs := make([]string, 0, maxDays*2)
+				index := 0
+				for _, file := range files {
+					if strings.Contains(file.Name(), "{csrv}") {
+						logs[index] = file.Name()
+						index++
+					}
+				}
+				sort.Strings(logs)
+
+				numberLogsLeft := len(logs)
+				for i := 0; (numberLogsLeft > maxDays) && (i < len(logs)); i++ {
+					logToDelete := path.Join(logDir, logs[i])
+					err := os.Remove(logToDelete)
+					if err != nil {
+						Warning("Server log failed to delete logfile :", logToDelete, ":", err)
+						break
+					}
+					numberLogsLeft--
+				}
+			}
+		case <-killChan:
+			return
+		}
 	}
 }
 
@@ -187,18 +240,4 @@ func colourInText(text string, colourFunc int) string {
 	default:
 		return text
 	}
-}
-
-// returns the string form of the current time
-// specify true for presetting with the date too
-func getTimestamp(long bool) string {
-	now := time.Now().Local()
-	hour, min, sec := now.Clock()
-	clockString := strconv.Itoa(hour) + ":" + strconv.Itoa(min) + ":" + strconv.Itoa(sec)
-	if long {
-		year, month, day := now.Date()
-		dateString := strconv.Itoa(year) + "/" + month.String() + "/" + strconv.Itoa(day)
-		return dateString + " " + clockString
-	}
-	return clockString
 }
