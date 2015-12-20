@@ -81,6 +81,7 @@ func Startup(args ...interface{}) {
 	logItem := logItem{
 		prefix:           "STARTUP:",
 		prefixColourFunc: startupColour,
+		time:             time.Now(),
 		content:          args,
 	}
 	logChan <- logItem
@@ -93,6 +94,7 @@ func Fatal(args ...interface{}) {
 	logItem := logItem{
 		prefix:           "FATAL:  ",
 		prefixColourFunc: fatalColour,
+		time:             time.Now(),
 		content:          args,
 	}
 	logChan <- logItem
@@ -103,6 +105,7 @@ func General(args ...interface{}) {
 	logItem := logItem{
 		prefix:           "GENERAL:",
 		prefixColourFunc: generalColour,
+		time:             time.Now(),
 		content:          args,
 	}
 	logChan <- logItem
@@ -113,6 +116,7 @@ func Warning(args ...interface{}) {
 	logItem := logItem{
 		prefix:           "WARNING:",
 		prefixColourFunc: warningColour,
+		time:             time.Now(),
 		content:          args,
 	}
 	logChan <- logItem
@@ -129,6 +133,7 @@ func Kill() {
 type logItem struct {
 	prefix           string
 	prefixColourFunc int
+	time             time.Time
 	content          []interface{}
 }
 
@@ -161,7 +166,7 @@ func writeToFile(item logItem, logPath string) {
 			log.Fatalln(err)
 		}
 
-		line := time.Now().Format("15:04:05") + " " + item.prefix + " " + fmt.Sprintln(item.content...)
+		line := item.time.Format("15:04:05") + " " + item.prefix + " " + fmt.Sprintln(item.content...)
 		_, err = file.WriteString(line)
 		if err != nil {
 			log.Fatalln(err)
@@ -172,7 +177,7 @@ func writeToFile(item logItem, logPath string) {
 // writeToConsole logs a message to the console
 func writeToConsole(item logItem) {
 	if logToConsol {
-		fmt.Print(time.Now().Format("15:04:05"), " ", colourInText(item.prefix, item.prefixColourFunc), " ", fmt.Sprintln(item.content...))
+		fmt.Print(item.time.Format("15:04:05"), " ", colourInText(item.prefix, item.prefixColourFunc), " ", fmt.Sprintln(item.content...))
 	}
 }
 

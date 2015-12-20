@@ -40,15 +40,21 @@ serverlog.Warning(conn.IP, "sending lots of data, possibly DOS attack?")
 serverlog.Fatal(conn.IP, "crashed the server! Kill all") // This will terminate the program with an exit code of 1
 ```
 
-![Console Demo](http://i.imgur.com/jYQHbMc.png)
-
-![File Demo](http://i.imgur.com/SPWENaK.png?1)
-
-The log listener can be terminated with :
+The logger can be terminated with :
 ```
 serverlog.Kill()
 ```
 When this happens the serverlog package needs to be initialized before it can log again.
+
+## Demo
+**Console**
+![Console Demo](https://i.imgur.com/6y0gTbb.png)
+
+**Logfile**
+![File Demo](https://i.imgur.com/t4YJv56.png)
+
+**Log Directory**
+![Directory Demo](https://i.imgur.com/0f0Nhtw.png)
 
 ## License
 MIT License
