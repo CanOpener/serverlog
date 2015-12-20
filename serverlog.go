@@ -26,10 +26,10 @@ var (
 	killChan    = make(chan bool, 1)
 
 	//colour functions
-	startupColourFunc = ansi.ColorFunc("green+b:black")
-	fatalColourFunc   = ansi.ColorFunc("red+b:black")
-	generalColourFunc = ansi.ColorFunc("blue+b:black")
-	warningColourFunc = ansi.ColorFunc("yellow+b:black")
+	startupColourFunc = ansi.ColorFunc("green+b")
+	fatalColourFunc   = ansi.ColorFunc("red+b")
+	generalColourFunc = ansi.ColorFunc("blue+b")
+	warningColourFunc = ansi.ColorFunc("yellow+b")
 )
 
 // The clolour type enumerator
@@ -134,7 +134,7 @@ type logItem struct {
 
 // listen is the listener which runs in its own gorutine and logs messages
 func listen() {
-	currentLogPath := path.Join(logDir, time.Now().Format("02-01-2006-{csrv}.log"))
+	currentLogPath := path.Join(logDir, time.Now().Format("02-01-2006.crsv.log"))
 
 	for {
 		select {
@@ -161,7 +161,7 @@ func writeToFile(item logItem, logPath string) {
 			log.Fatalln(err)
 		}
 
-		line := time.Now().Format("15:04:05") + " " + item.prefix + " " + fmt.Sprintln(item.content)
+		line := time.Now().Format("15:04:05") + " " + item.prefix + " " + fmt.Sprintln(item.content...)
 		_, err = file.WriteString(line)
 		if err != nil {
 			log.Fatalln(err)
@@ -172,8 +172,7 @@ func writeToFile(item logItem, logPath string) {
 // writeToConsole logs a message to the console
 func writeToConsole(item logItem) {
 	if logToConsol {
-		fmt.Print(time.Now().Format("15:04:05"), colourInText(item.prefix, item.prefixColourFunc), " ")
-		fmt.Println(item.content...)
+		fmt.Print(time.Now().Format("15:04:05"), " ", colourInText(item.prefix, item.prefixColourFunc), " ", fmt.Sprintln(item.content...))
 	}
 }
 
@@ -189,7 +188,7 @@ func logFileOverseer() {
 
 		select {
 		case <-newDay:
-			newLogFile := path.Join(logDir, tomorrow.Format("02-01-2006-{csrv}.log"))
+			newLogFile := path.Join(logDir, tomorrow.Format("02-01-2006.crsv.log"))
 
 			// create new logfile
 			_, err := os.Create(newLogFile)
@@ -201,6 +200,7 @@ func logFileOverseer() {
 			// tell listener new logfile name.
 			logNameChan <- newLogFile
 
+			// check number of logfiles
 			if maxDays > 0 {
 				files, err := ioutil.ReadDir(logDir)
 				if err != nil {
