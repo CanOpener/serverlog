@@ -145,7 +145,7 @@ type logItem struct {
 
 // listen is the listener which runs in its own gorutine and logs messages
 func listen() {
-	currentLogPath := path.Join(logDir, time.Now().Format("02-01-2006.crsv.log"))
+	currentLogPath := path.Join(logDir, time.Now().Format("2016-02-27.crsv.log"))
 
 	for {
 		select {
@@ -199,7 +199,7 @@ func logFileOverseer() {
 
 		select {
 		case <-newDay:
-			newLogFile := path.Join(logDir, tomorrow.Format("02-01-2006.crsv.log"))
+			newLogFile := path.Join(logDir, tomorrow.Format("2016-02-27.crsv.log"))
 
 			// create new logfile
 			_, err := os.Create(newLogFile)
