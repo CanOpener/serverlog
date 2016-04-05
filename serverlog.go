@@ -93,6 +93,12 @@ func Startup(args ...interface{}) {
 	logChan <- logItem
 }
 
+// Startupf used to log the startup message
+// Formats the text before sending it
+func Startupf(format string, args ...interface{}) {
+	Startup(fmt.Sprintf(format, args...))
+}
+
 // Fatal is used to log something a server killing circumstance
 // same as log.Fatalln()
 // This will terminate the process with an exit code of 1
@@ -106,6 +112,12 @@ func Fatal(args ...interface{}) {
 	logChan <- logItem
 }
 
+// Fatalf is used to log something a server killing circumstance
+// Formats the text before sending it
+func Fatalf(format string, args ...interface{}) {
+	Fatal(fmt.Sprintf(format, args...))
+}
+
 // General is used to log general stuff
 func General(args ...interface{}) {
 	logItem := logItem{
@@ -117,6 +129,12 @@ func General(args ...interface{}) {
 	logChan <- logItem
 }
 
+// Generalf is used to log general stuff
+// Formats the text before sending it
+func Generalf(format string, args ...interface{}) {
+	General(fmt.Sprintf(format, args...))
+}
+
 // Warning is used to log warnings
 func Warning(args ...interface{}) {
 	logItem := logItem{
@@ -126,6 +144,12 @@ func Warning(args ...interface{}) {
 		content:          args,
 	}
 	logChan <- logItem
+}
+
+// Warningf is used to log warnings
+// Formats the text before sending it
+func Warningf(format string, args ...interface{}) {
+	Warning(fmt.Sprintf(format, args...))
 }
 
 // Kill will terminate the listener and logFileOverseer
