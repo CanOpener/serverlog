@@ -3,12 +3,11 @@ Server Log v1.2.0
 A thread safe logging system for servers. Serverlog can log to files and to the console(with pretty colours) depending on what you specify. Logfiles will be separated by dates and can also manage how many logfiles you want on the server at any one time.
 
 ## Import
-Go get the package like this
-```
-go get github.com/canopener/serverlog
-```
-Import like this
-```
+Go get the package like this  
+> `go get github.com/canopener/serverlog`
+
+Import like this  
+```go
 import "github.com/canopener/serverlog"
 ```
 
@@ -25,12 +24,12 @@ The package needs to be initialized. Use the Init function for this.
 
 Note: if the second parameter is set to false the third and fourth can be random as they wont even be evaluated by serverlog.
 
-```
+```go
 serverlog.Init(true, true, 7, "/home/joe/logs/myServerLogs")
 ```
 
 4 logging functions are available.
-```
+```go
 serverlog.Startup("server listening on port:", PORT) // for startup logging
 
 serverlog.General("Accepted connection from:", conn.IP) // for general logging
@@ -40,8 +39,13 @@ serverlog.Warning(conn.IP, "sending lots of data, possibly DOS attack?")
 serverlog.Fatal(conn.IP, "crashed the server! Kill all") // This will terminate the program with an exit code of 1
 ```
 
-The logger can be terminated with :
+If you wish to format the string before logging it, you can call it equivelent with `f` appended after the logging function. Eg:
+```go
+serverlog.Startupf("server listening on %s:%s", addr, port)
 ```
+
+The logger can be terminated with :
+```go
 serverlog.Kill()
 ```
 When this happens the serverlog package needs to be initialized before it can log again.
