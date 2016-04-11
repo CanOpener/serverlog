@@ -38,7 +38,7 @@ var (
 	warningColourFunc = ansi.ColorFunc("yellow+b")
 )
 
-// The clolour type enumerator
+// The colour type enumerator
 const (
 	startupColour int = iota
 	fatalColour
@@ -145,7 +145,7 @@ type logItem struct {
 
 // listen is the listener which runs in its own gorutine and logs messages
 func listen() {
-	currentLogPath := path.Join(logDir, time.Now().Format("02-01-2006.crsv.log"))
+	currentLogPath := path.Join(logDir, time.Now().Format("2006-01-02.crsv.log"))
 
 	for {
 		select {
@@ -199,7 +199,7 @@ func logFileOverseer() {
 
 		select {
 		case <-newDay:
-			newLogFile := path.Join(logDir, tomorrow.Format("02-01-2006.crsv.log"))
+			newLogFile := path.Join(logDir, tomorrow.Format("2006-01-02.crsv.log"))
 
 			// create new logfile
 			_, err := os.Create(newLogFile)
