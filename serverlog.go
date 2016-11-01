@@ -20,10 +20,10 @@ import (
 )
 
 var (
-	logToConsol = false // should log to consol
-	logToFile   = false // should log to file
-	logDir      = ""    // directory in which to store logfiles
-	maxDays     = -1    // total number of logfiles at any time
+	logToConsole = false // should log to console
+	logToFile    = false // should log to file
+	logDir       = ""    // directory in which to store logfiles
+	maxDays      = -1    // total number of logfiles at any time
 	// if exeeded will delete oldest
 
 	//log queue
@@ -48,8 +48,8 @@ const (
 
 // Init initialises the srvlog package. if either consoleLog or fileLog
 // is true it will start the logger in another gorutine ready to log
-func Init(consolLog, fileLog bool, maxLogDays int, pathToLogDir string) {
-	logToConsol = consolLog
+func Init(consoleLog bool, fileLog bool, maxLogDays int, pathToLogDir string) {
+	logToConsole = consoleLog
 	logToFile = fileLog
 	logDir = pathToLogDir
 	maxDays = maxLogDays
